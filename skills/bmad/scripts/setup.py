@@ -13,6 +13,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tomllib
 import urllib.error
@@ -336,6 +337,8 @@ def setup(
     if not output.exists() and not output.is_symlink():
         changed = True
     ensure_dir(output)
+    if ensure_cache_git_exclude(project_root):
+        changed = True
 
     unmet = unmet_requirements(installation, skill_root, module=None if selected is None else selected.module)
     recommended = unmet_recommendations(installation, skill_root, module=None if selected is None else selected.module)
@@ -2221,6 +2224,32 @@ def output_folder(config_text: str) -> str:
     if folder.startswith(prefix):
         folder = folder[len(prefix) :]
     return folder or "_bmad-output"
+
+
+def ensure_cache_git_exclude(project_root: Path) -> bool:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(project_root), "rev-parse", "--path-format=absolute", "--show-toplevel", "--git-path", "info/exclude"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError:
+        return False
+    if result.returncode != 0:
+        return False
+    root, exclude_path = result.stdout.splitlines()
+    exclude = Path(exclude_path)
+    cache = (project_root.resolve() / "_bmad" / ".cache").relative_to(Path(root).resolve())
+    pattern = f"/{cache.as_posix()}/"
+    text = exclude.read_text(encoding="utf-8") if exclude.exists() else ""
+    if pattern in text.splitlines():
+        return False
+    separator = "\n" if text and not text.endswith("\n") else ""
+    exclude.parent.mkdir(parents=True, exist_ok=True)
+    with exclude.open("a", encoding="utf-8", newline="") as stream:
+        stream.write(f"{separator}{pattern}\n")
+    return True
 
 
 def materialize_bmad(

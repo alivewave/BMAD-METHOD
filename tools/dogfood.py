@@ -138,7 +138,7 @@ def setup_bmad(project_root: Path) -> None:
     skill = scripts[0].parents[1]
     result = run(
         [
-            "uv", "run", "--no-cache", str(scripts[0]),
+            "uv", "run", "--cache-dir", str(project_root / "_bmad" / ".cache" / "uv"), str(scripts[0]),
             "--project-root", str(project_root),
             "--skill", str(skill),
             *[arg for script in scripts for arg in ("--root", str(script.parents[2]))],

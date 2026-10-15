@@ -6,7 +6,7 @@ Setup, status, update, repair and doctor are one flow: check, report, then fix w
 
 ## Calling setup.py
 
-Every call is `uv run --no-cache "{skill-root}/scripts/setup.py" --project-root "{project-root}" --skill "{skill-root}"`, plus:
+Every call is `uv run --cache-dir "{project-root}/_bmad/.cache/uv" "{skill-root}/scripts/setup.py" --project-root "{project-root}" --skill "{skill-root}"`, plus:
 
 - `--root <folder>` for each skills folder the host has active, project folders first, as for `knowledge.py` in help;
 - `--module <name>` when the user named a module, by code (`method`) or folder (`bmod-method`);
@@ -16,7 +16,7 @@ Each call prints one JSON value. On failure it prints `error: <message>` and exi
 
 ## 1. Check
 
-Run with `--status`; it writes nothing. On a first install (`bmad_exists` false) go straight to Fix. Otherwise report what the JSON shows: each module with its version, scope and update state, then whatever is missing, stale, duplicated, retired, unmet or a problem. What the JSON does not say itself:
+Run with `--status`; setup writes nothing, though `uv` may populate its cache. On a first install (`bmad_exists` false) go straight to Fix. Otherwise report what the JSON shows: each module with its version, scope and update state, then whatever is missing, stale, duplicated, retired, unmet or a problem. What the JSON does not say itself:
 
 - Call the installation current only when the top-level `current` is true.
 - `absent_skills` are skills the user opted out of or that are new to the module, and `unmet_recommendations` are suggested additions. Both are optional, not faults.
@@ -51,7 +51,7 @@ Then run with no mode flag, adding `--module-answers <file>` when you wrote one,
 - Duplicates: `--remove-copies <path>...`, paths exactly as listed. Keep the copy in use, or the newer one when `newer_copy_unused`.
 - Run the `install` commands the user accepts from `install_offers`, `absent_install`, `unmet_requirements` and `missing_module_records`. Before one that adds a module record (a `missing_module_records` entry, or a `bmod-<code>` skill), run with `--source-record <source> <folder>`, using the record's folder and the `source` of its `missing_module_records` or `unmet_requirements` entry, and show its `pre_install_message`; when its `state` is `could-not-check`, say so and install without a message. After the installs, run Config and `_bmad` again.
 
-**Clean up v6.** Run `uv run --no-cache "{skill-root}/scripts/migrate_v6.py" --project-root "{project-root}" --skill "{skill-root}"`, plus each `--root`. It lists `legacy_leftovers`, `stale_config_keys` and `unused_customizations`: v6 traces v7 does not read. When any list is not empty, show the lists as given and offer once to remove them. On yes, run it again with `--clean`: it copies `_bmad/` to `.v6-v7-migration-backup-<datetime>/` first, then removes them. Report the backup and what was removed.
+**Clean up v6.** Run `uv run --cache-dir "{project-root}/_bmad/.cache/uv" "{skill-root}/scripts/migrate_v6.py" --project-root "{project-root}" --skill "{skill-root}"`, plus each `--root`. It lists `legacy_leftovers`, `stale_config_keys` and `unused_customizations`: v6 traces v7 does not read. When any list is not empty, show the lists as given and offer once to remove them. On yes, run it again with `--clean`: it copies `_bmad/` to `.v6-v7-migration-backup-<datetime>/` first, then removes them. Report the backup and what was removed.
 
 **Migrations.** Do steps 1 and 2 of `references/migrate.md`, Find and Match. Name each that applies with its `title`, `from` and `to`, and ask; on yes, continue with its steps 3 and 4.
 

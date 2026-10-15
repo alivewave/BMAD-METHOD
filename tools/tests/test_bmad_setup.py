@@ -220,6 +220,7 @@ def write_core(root: Path, *, version: str = "1.2.3", update_source: str = "file
 
 
 def run_setup(project: Path, skill: Path, *extra: str) -> subprocess.CompletedProcess[str]:
+    # Isolate setup's filesystem effects from uv's cache initialization.
     return subprocess.run(
         [
             "uv",
@@ -2801,6 +2802,65 @@ class BmadConfigScopeTests(unittest.TestCase):
             self.assertIn("symlink", result.stderr)
             self.assertEqual(outside.read_text(encoding="utf-8"), "[core]\nkeep = true\n")
             self.assertFalse((project / "_bmad" / "config.toml").exists())
+
+    def test_setup_ignores_the_project_cache_without_overwriting_or_duplicating_rules(self):
+        for existing in (None, "notes/\n", "notes/"):
+            with self.subTest(existing=existing), tempfile.TemporaryDirectory() as temp_dir:
+                project, skill = self.fixture(Path(temp_dir))
+                subprocess.run(["git", "init", "--quiet", str(project)], check=True)
+                exclude = project / ".git" / "info" / "exclude"
+                exclude.unlink(missing_ok=True)
+                gitignore = project / ".gitignore"
+                write(gitignore, "keep/\n")
+                if existing is not None:
+                    write(exclude, existing)
+
+                self.answer_all(project, skill)
+                expected = "notes/\n/_bmad/.cache/\n" if existing else "/_bmad/.cache/\n"
+                self.assertEqual(exclude.read_text(encoding="utf-8"), expected)
+                self.assertEqual(gitignore.read_text(encoding="utf-8"), "keep/\n")
+
+                second = setup_report(self, project, skill)
+                self.assertFalse(second["changed"])
+                self.assertEqual(exclude.read_text(encoding="utf-8"), expected)
+                ignored = subprocess.run(
+                    ["git", "-C", str(project), "check-ignore", "_bmad/.cache/uv/package.whl"],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                self.assertEqual(ignored.returncode, 0, ignored.stderr)
+
+    def test_setup_without_git_does_not_create_ignore_files(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project, skill = self.fixture(Path(temp_dir))
+            self.answer_all(project, skill)
+            self.assertFalse((project / ".gitignore").exists())
+            self.assertFalse((project / ".git").exists())
+
+    def test_cache_exclude_resolves_linked_worktrees_and_nested_projects(self):
+        setup = load_setup()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            repo = root / "repo"
+            worktree = root / "worktree"
+            subprocess.run(["git", "init", "--quiet", str(repo)], check=True)
+            subprocess.run(
+                ["git", "-C", str(repo), "-c", "user.name=Test", "-c", "user.email=test@example.com",
+                 "commit", "--quiet", "--allow-empty", "-m", "test: initialize"],
+                check=True,
+            )
+            subprocess.run(["git", "-C", str(repo), "worktree", "add", "--quiet", str(worktree)], check=True)
+            project = worktree / "nested"
+            project.mkdir()
+            self.assertTrue(setup.ensure_cache_git_exclude(project))
+            self.assertFalse(setup.ensure_cache_git_exclude(project))
+            ignored = subprocess.run(
+                ["git", "-C", str(worktree), "check-ignore", "nested/_bmad/.cache/uv/package.whl"],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertEqual(ignored.returncode, 0, ignored.stderr)
+            self.assertIn("/nested/_bmad/.cache/\n", (repo / ".git/info/exclude").read_text(encoding="utf-8"))
 
     def test_the_custom_gitignore_is_written_once_and_never_edited(self):
         with tempfile.TemporaryDirectory() as temp_dir:
