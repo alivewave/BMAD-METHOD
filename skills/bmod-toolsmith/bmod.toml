@@ -1,7 +1,7 @@
 [bmod]
 code = "toolsmith"
 version = "6.13.0-next"
-update_source = "github:bmad-code-org/BMAD-METHOD/skills"
+update_source = "github:alivewave/BMAD-METHOD/skills"
 skills = ["bmad-toolsmith", "bmad-eval"]
 required_skills = [{ skill = "bmad", version = "6.13.0", source = "github:bmad-code-org/BMAD-METHOD/skills" }]
 pre_install_message = ""

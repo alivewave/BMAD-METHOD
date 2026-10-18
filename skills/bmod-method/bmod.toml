@@ -1,7 +1,7 @@
 [bmod]
 code = "method"
 version = "6.13.0-next"
-update_source = "github:bmad-code-org/BMAD-METHOD/skills"
+update_source = "github:alivewave/BMAD-METHOD/skills"
 skills = [
   "bmad-agent-analyst",
   "bmad-agent-architect",
