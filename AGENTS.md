@@ -12,7 +12,10 @@ Open source framework for structured, agent-assisted software delivery. Skills l
 - Push only when explicitly requested. Commit first; the worktree must be clean with no untracked files.
 - Pull requests: branch from and target `dev` branch. Verify with `gh pr view` after creating.
 - Never push to `main` except by following `tools/release.md`. Legacy npm installer is maintained separately on `V6.12` branch.
-- This fork differs from upstream only where needed. Module records (`skills/bmod-*/bmod.toml`) keep `update_source` and the `bmad` entry in `required_skills` on `github:alivewave/BMAD-METHOD/skills` so updates and installs pull from this fork; leave every other `bmad-code-org` reference as upstream has it. Recheck after each upstream merge.
+- This fork differs from upstream only where needed:
+  - Module records (`skills/bmod-*/bmod.toml`) keep `update_source` and the `bmad` entry in `required_skills` on `github:alivewave/BMAD-METHOD/skills` so updates and installs pull from this fork; leave every other `bmad-code-org` reference as upstream has it.
+  - Skills and `tools/dogfood.py` call `uv run --cache-dir "{project-root}/_bmad/.cache/uv"` instead of `uv run --no-cache`, and `setup.py` adds that cache to `.git/info/exclude`.
+- After each upstream merge or cherry-pick, check the incoming changes against both customizations above and apply them to any new or changed files and module records.
 
 ## Where things are
 
